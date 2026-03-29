@@ -1,0 +1,10 @@
+export { teacherApi } from './teacher';
+export { employeeApi } from './employee';
+export { studentApi } from './student';
+export { subjectApi } from './subject';
+export { attendanceApi } from './attendance';
+export { timetableApi } from './timetable';
+export { leaveApi } from './leave';
+export { certificateApi } from './certificate';
+export { noticeApi } from './notice';
+export { qaApi } from './qa';

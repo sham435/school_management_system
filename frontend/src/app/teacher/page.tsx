@@ -1,34 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Plus, MoreVertical, Mail, Phone, Award, Calendar, Edit, Trash2, X } from 'lucide-react';
-
-interface Teacher {
-  id: number;
-  name: string;
-  subject: string;
-  phone: string;
-  email: string;
-  experience: string;
-  qualification: string;
-}
-
-const initialTeachers: Teacher[] = [
-  { id: 1, name: 'Rajesh Kumar', subject: 'Mathematics', phone: '+91 98765 43210', email: 'rajesh@school.edu', experience: '8 years', qualification: 'M.Sc Math, B.Ed' },
-  { id: 2, name: 'Priya Sharma', subject: 'English', phone: '+91 98765 43211', email: 'priya@school.edu', experience: '5 years', qualification: 'M.A English, B.Ed' },
-  { id: 3, name: 'Ahmed Khan', subject: 'Science', phone: '+91 98765 43212', email: 'ahmed@school.edu', experience: '10 years', qualification: 'M.Sc Physics, B.Ed' },
-  { id: 4, name: 'Smt. Lakshmi', subject: 'Tamil', phone: '+91 98765 43213', email: 'lakshmi@school.edu', experience: '12 years', qualification: 'M.A Tamil, B.Ed' },
-  { id: 5, name: 'John Peter', subject: 'Computer', phone: '+91 98765 43214', email: 'john@school.edu', experience: '6 years', qualification: 'M.Tech, B.Ed' },
-];
+import { useState, useEffect } from 'react';
+import { Search, Plus, MoreVertical, Mail, Phone, Award, Calendar, Edit, Trash2, X, Loader2 } from 'lucide-react';
+import { teacherApi } from '@/api';
+import { Teacher } from '@/types';
 
 const subjects = ['Mathematics', 'English', 'Science', 'Tamil', 'Computer', 'Physics', 'Chemistry', 'Biology', 'History', 'Geography'];
 
 export default function TeacherPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -39,29 +26,68 @@ export default function TeacherPage() {
     qualification: ''
   });
 
+  useEffect(() => {
+    const loadTeachers = async () => {
+      try {
+        setLoading(true);
+        const response = await teacherApi.getAll();
+        setTeachers(response.data || []);
+      } catch (err: any) {
+        console.error('Error fetching teachers:', err);
+        setError('Failed to load teachers');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTeachers();
+  }, []);
+
   const filteredTeachers = teachers.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.subject.toLowerCase().includes(searchTerm.toLowerCase())
+    t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.subject?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTeacher) {
-      setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...formData, id: editingTeacher.id } : t));
-    } else {
-      setTeachers([...teachers, { ...formData, id: Date.now() }]);
+    try {
+      setSubmitting(true);
+      if (editingTeacher) {
+        const updated = await teacherApi.update(editingTeacher.id, formData);
+        setTeachers(teachers.map(t => t.id === editingTeacher.id ? updated : t));
+      } else {
+        const created = await teacherApi.create(formData);
+        setTeachers([...teachers, created]);
+      }
+      closeModal();
+    } catch (err: any) {
+      console.error('Error saving teacher:', err);
+      setError('Failed to save teacher');
+    } finally {
+      setSubmitting(false);
     }
-    closeModal();
   };
 
-  const handleDelete = (id: number) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-    setShowDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await teacherApi.delete(id);
+      setTeachers(teachers.filter(t => t.id !== id));
+      setShowDeleteConfirm(null);
+    } catch (err: any) {
+      console.error('Error deleting teacher:', err);
+      setError('Failed to delete teacher');
+    }
   };
 
   const openEditModal = (teacher: Teacher) => {
     setEditingTeacher(teacher);
-    setFormData(teacher);
+    setFormData({
+      name: teacher.name || '',
+      subject: teacher.subject || '',
+      phone: teacher.phone || '',
+      email: teacher.email || '',
+      experience: teacher.experience || '',
+      qualification: teacher.qualification || ''
+    });
     setShowModal(true);
   };
 
@@ -88,6 +114,10 @@ export default function TeacherPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{error}</div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -101,53 +131,59 @@ export default function TeacherPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTeachers.map((teacher) => (
-          <div key={teacher.id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white font-bold text-xl">
-                {teacher.name.split(' ').map(n => n[0]).join('')}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="animate-spin text-green-600" size={40} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTeachers.map((teacher) => (
+            <div key={teacher.id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white font-bold text-xl">
+                  {teacher.name?.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div className="flex gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => openEditModal(teacher)}
+                    className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(teacher.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <button 
-                  type="button"
-                  onClick={() => openEditModal(teacher)}
-                  className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
-                >
-                  <Edit size={18} />
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(teacher.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                >
-                  <Trash2 size={18} />
-                </button>
+              <h3 className="font-semibold text-lg text-slate-800">{teacher.name}</h3>
+              <p className="text-green-600 font-medium">{teacher.subject}</p>
+              <p className="text-slate-500 text-sm mt-1">{teacher.qualification}</p>
+              
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Phone size={16} className="text-slate-400" />
+                  {teacher.phone}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Mail size={16} className="text-slate-400" />
+                  {teacher.email}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Award size={16} className="text-slate-400" />
+                  {teacher.experience}
+                </div>
               </div>
             </div>
-            <h3 className="font-semibold text-lg text-slate-800">{teacher.name}</h3>
-            <p className="text-green-600 font-medium">{teacher.subject}</p>
-            <p className="text-slate-500 text-sm mt-1">{teacher.qualification}</p>
-            
-            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Phone size={16} className="text-slate-400" />
-                {teacher.phone}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Mail size={16} className="text-slate-400" />
-                {teacher.email}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Award size={16} className="text-slate-400" />
-                {teacher.experience}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {filteredTeachers.length === 0 && (
+      {filteredTeachers.length === 0 && !loading && (
         <div className="text-center py-12">
           <p className="text-slate-500">No teachers found</p>
         </div>
@@ -240,14 +276,17 @@ export default function TeacherPage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-4 py-2 border text-slate-700 rounded-lg hover:bg-slate-50"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 border text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
                   {editingTeacher ? 'Update' : 'Add'} Teacher
                 </button>
               </div>

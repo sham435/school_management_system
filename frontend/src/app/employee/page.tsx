@@ -1,36 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Plus, Mail, Phone, Calendar, Edit, Trash2, X, Briefcase, User } from 'lucide-react';
-
-interface Employee {
-  id: number;
-  name: string;
-  designation: string;
-  department: string;
-  phone: string;
-  email: string;
-  joinDate: string;
-  salary: string;
-}
-
-const initialEmployees: Employee[] = [
-  { id: 1, name: 'Rajesh Kumar', designation: 'Principal', department: 'Administration', phone: '+91 98765 43210', email: 'rajesh@school.edu', joinDate: '2015-06-01', salary: '₹80,000' },
-  { id: 2, name: 'Priya Sharma', designation: 'Vice Principal', department: 'Administration', phone: '+91 98765 43211', email: 'priya@school.edu', joinDate: '2018-01-15', salary: '₹65,000' },
-  { id: 3, name: 'Ahmed Khan', designation: 'Head Master', department: 'Academic', phone: '+91 98765 43212', email: 'ahmed@school.edu', joinDate: '2016-07-01', salary: '₹55,000' },
-  { id: 4, name: 'Smt. Lakshmi', designation: 'Senior Teacher', department: 'Tamil', phone: '+91 98765 43213', email: 'lakshmi@school.edu', joinDate: '2012-03-01', salary: '₹45,000' },
-  { id: 5, name: 'John Peter', designation: 'Administrator', department: 'Office', phone: '+91 98765 43214', email: 'john@school.edu', joinDate: '2020-09-01', salary: '₹35,000' },
-];
+import { useState, useEffect } from 'react';
+import { Search, Plus, Mail, Phone, Calendar, Edit, Trash2, X, Loader2 } from 'lucide-react';
+import { employeeApi } from '@/api';
+import { Employee } from '@/types';
 
 const designations = ['Principal', 'Vice Principal', 'Head Master', 'Senior Teacher', 'Teacher', 'Administrator', 'Accountant', 'Clerk', 'Librarian'];
 const departments = ['Administration', 'Academic', 'Tamil', 'English', 'Math', 'Science', 'Office', 'Library', 'Accounts'];
 
 export default function EmployeePage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -38,41 +24,81 @@ export default function EmployeePage() {
     department: '',
     phone: '',
     email: '',
-    joinDate: '',
+    joiningDate: '',
     salary: ''
   });
 
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        setLoading(true);
+        const response = await employeeApi.getAll();
+        setEmployees(response.data || []);
+      } catch (err: any) {
+        console.error('Error fetching employees:', err);
+        setError('Failed to load employees');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEmployees();
+  }, []);
+
   const filteredEmployees = employees.filter(e => 
-    e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.department.toLowerCase().includes(searchTerm.toLowerCase())
+    e.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.designation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingEmployee) {
-      setEmployees(employees.map(e => e.id === editingEmployee.id ? { ...formData, id: editingEmployee.id } : e));
-    } else {
-      setEmployees([...employees, { ...formData, id: Date.now() }]);
+    try {
+      setSubmitting(true);
+      if (editingEmployee) {
+        const updated = await employeeApi.update(editingEmployee.id, formData);
+        setEmployees(employees.map(e => e.id === editingEmployee.id ? updated : e));
+      } else {
+        const created = await employeeApi.create(formData);
+        setEmployees([...employees, created]);
+      }
+      closeModal();
+    } catch (err: any) {
+      console.error('Error saving employee:', err);
+      setError('Failed to save employee');
+    } finally {
+      setSubmitting(false);
     }
-    closeModal();
   };
 
-  const handleDelete = (id: number) => {
-    setEmployees(employees.filter(e => e.id !== id));
-    setShowDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await employeeApi.delete(id);
+      setEmployees(employees.filter(e => e.id !== id));
+      setShowDeleteConfirm(null);
+    } catch (err: any) {
+      console.error('Error deleting employee:', err);
+      setError('Failed to delete employee');
+    }
   };
 
   const openEditModal = (employee: Employee) => {
     setEditingEmployee(employee);
-    setFormData(employee);
+    setFormData({
+      name: employee.name || '',
+      designation: employee.designation || '',
+      department: employee.department || '',
+      phone: employee.phone || '',
+      email: employee.email || '',
+      joiningDate: employee.joiningDate || '',
+      salary: employee.salary?.toString() || ''
+    });
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingEmployee(null);
-    setFormData({ name: '', designation: '', department: '', phone: '', email: '', joinDate: '', salary: '' });
+    setFormData({ name: '', designation: '', department: '', phone: '', email: '', joiningDate: '', salary: '' });
   };
 
   return (
@@ -92,6 +118,10 @@ export default function EmployeePage() {
         </button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{error}</div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -105,70 +135,76 @@ export default function EmployeePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="text-left p-4 font-semibold text-slate-600">Name</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Designation</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Department</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Phone</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Join Date</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Salary</th>
-              <th className="text-left p-4 font-semibold text-slate-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmployees.map((employee) => (
-              <tr key={employee.id} className="border-b hover:bg-slate-50">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                      {employee.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <p className="font-medium">{employee.name}</p>
-                      <p className="text-sm text-slate-500">{employee.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    {employee.designation}
-                  </span>
-                </td>
-                <td className="p-4 text-slate-600">{employee.department}</td>
-                <td className="p-4 text-slate-600">{employee.phone}</td>
-                <td className="p-4 text-slate-600">{employee.joinDate}</td>
-                <td className="p-4 font-medium">{employee.salary}</td>
-                <td className="p-4">
-                  <div className="flex gap-1">
-                    <button 
-                      type="button"
-                      onClick={() => openEditModal(employee)}
-                      className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setShowDeleteConfirm(employee.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="animate-spin text-green-600" size={40} />
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th className="text-left p-4 font-semibold text-slate-600">Name</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Designation</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Department</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Phone</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Join Date</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Salary</th>
+                <th className="text-left p-4 font-semibold text-slate-600">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredEmployees.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-slate-500">No employees found</p>
-          </div>
-        )}
-      </div>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((employee) => (
+                <tr key={employee.id} className="border-b hover:bg-slate-50">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                        {employee.name?.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="font-medium">{employee.name}</p>
+                        <p className="text-sm text-slate-500">{employee.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                      {employee.designation}
+                    </span>
+                  </td>
+                  <td className="p-4 text-slate-600">{employee.department}</td>
+                  <td className="p-4 text-slate-600">{employee.phone}</td>
+                  <td className="p-4 text-slate-600">{employee.joiningDate}</td>
+                  <td className="p-4 font-medium">{employee.salary}</td>
+                  <td className="p-4">
+                    <div className="flex gap-1">
+                      <button 
+                        type="button"
+                        onClick={() => openEditModal(employee)}
+                        className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(employee.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredEmployees.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-slate-500">No employees found</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -246,13 +282,13 @@ export default function EmployeePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="joinDate" className="block text-sm font-medium text-slate-700 mb-1">Join Date</label>
+                  <label htmlFor="joiningDate" className="block text-sm font-medium text-slate-700 mb-1">Join Date</label>
                   <input
-                    id="joinDate"
+                    id="joiningDate"
                     type="date"
                     required
-                    value={formData.joinDate}
-                    onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
+                    value={formData.joiningDate}
+                    onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
@@ -261,7 +297,6 @@ export default function EmployeePage() {
                   <input
                     id="salary"
                     type="text"
-                    required
                     value={formData.salary}
                     onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -273,14 +308,17 @@ export default function EmployeePage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-4 py-2 border text-slate-700 rounded-lg hover:bg-slate-50"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 border text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
                   {editingEmployee ? 'Update' : 'Add'} Employee
                 </button>
               </div>
