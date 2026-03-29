@@ -1,14 +1,18 @@
 import Link from 'next/link';
 import { 
   LayoutDashboard, User, Users, BookOpen, UserCheck, 
-  ClipboardList, Calendar, Map, FileText, FileBadge, Bus, Settings 
+  ClipboardList, Calendar, MapPin, FileText, FileBadge, Bus, Settings,
+  Award, UsersRound, Library, Calculator, GraduationCap, BedDouble, MessageSquare,
+  Briefcase, Clipboard, FileCheck, Clock, GraduationCap as Certificate
 } from 'lucide-react';
 import React from 'react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: User, label: 'Teacher', href: '/teacher' },
+  { icon: Briefcase, label: 'Employee', href: '/employee' },
   { icon: Users, label: 'Student', href: '/student' },
+  { icon: UsersRound, label: 'Parents', href: '/parents' },
   { icon: BookOpen, label: 'Subjects', href: '/subjects' },
   { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   { icon: ClipboardList, label: 'Notice Board', href: '/noticeboard' },
@@ -16,7 +20,15 @@ const navItems = [
   { icon: BookOpen, label: 'Syllabus', href: '/syllabus' },
   { icon: FileText, label: 'Notes', href: '/notes' },
   { icon: FileBadge, label: 'Marks', href: '/marks' },
+  { icon: Library, label: 'Library', href: '/library' },
+  { icon: Calculator, label: 'Accounts', href: '/accounts' },
+  { icon: GraduationCap, label: 'Examination', href: '/examination' },
+  { icon: BedDouble, label: 'Hostel', href: '/hostel' },
+  { icon: MessageSquare, label: 'Messages', href: '/messages' },
   { icon: Bus, label: 'Bus Service', href: '/bus-service' },
+  { icon: Clipboard, label: 'Leaves', href: '/leaves' },
+  { icon: FileCheck, label: 'Certificate', href: '/certificate' },
+  { icon: Award, label: 'QA Evaluation', href: '/qa' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
