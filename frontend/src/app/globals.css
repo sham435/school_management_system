@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f6f8;
+  --foreground: #111827;
+  --sidebar: #ffffff;
+  --primary: #f97316; /* Orange color for the ERP logo/accents */
+  --sidebar-active: #e2e8f0;
+  --text-muted: #6b7280;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* Utilities for Bus Map */
+.vertical-line {
+  position: absolute;
+  left: 17px;
+  top: 24px;
+  bottom: 0;
+  width: 3px;
+  background-color: #a7f3d0;
+  z-index: -1;
+}
+
+.timeline-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

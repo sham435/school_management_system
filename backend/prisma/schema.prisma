@@ -1,0 +1,1319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== CORE ENUMS ====================
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  EMPLOYEE
+  PARENT
+  ACCOUNTANT
+  LIBRARIAN
+}
+
+enum EmployeeType {
+  ACADEMIC
+  NON_ACADEMIC
+  MANAGEMENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ALUMNI
+}
+
+enum AdmissionStatus {
+  PENDING
+  VERIFIED
+  ADMITTED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  LEAVE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentGateway {
+  STRIPE
+  PAYHERE
+  CASH
+  BANK_TRANSFER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum ExamType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMESTER
+  ANNUAL
+}
+
+enum QuestionType {
+  MCQ
+  DESCRIPTIVE
+  TRUE_FALSE
+  FILL_BLANK
+}
+
+enum CertificateType {
+  BONAFIDE
+  TRANSFER
+  COMPLETION
+  CHARACTER
+  LEAVING
+  TEMPORARY
+}
+
+enum EventType {
+  ACADEMIC
+  SPORTS
+  CULTURAL
+  ADMINISTRATIVE
+  OTHER
+}
+
+enum NotificationType {
+  SMS
+  WHATSAPP
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+enum VisitorPurpose {
+  ADMISSION
+  MEETING
+  DELIVERY
+  COMPLAINT
+  OTHER
+}
+
+enum ScholarshipStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+// ==================== TENANT & ACADEMIC YEAR ====================
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  domain    String   @unique
+  address   String?
+  phone     String?
+  email     String?
+  logo      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  students         Student[]
+  payments         Payment[]
+  employees        Employee[]
+  admissions       Admission[]
+  academicYears    AcademicYear[]
+  classes          Class[]
+  subjects         Subject[]
+  exams            Exam[]
+  events           Event[]
+  notices          Notice[]
+  frontOfficeLogs  FrontOfficeLog[]
+  scholarships     Scholarship[]
+  fees             Fee[]
+  payrolls         Payroll[]
+  leaveRequests    LeaveRequest[]
+  timetables       Timetable[]
+  healthRecords    HealthRecord[]
+  certificates     Certificate[]
+  smsLogs          SmsLog[]
+  whatsappLogs     WhatsappLog[]
+  vehicleLocations VehicleLocation[]
+  Enquiry          Enquiry[]
+  Complaint        Complaint[]
+  Notification     Notification[]
+  BiometricDevice  BiometricDevice[]
+  Vehicle          Vehicle[]
+  LibraryBook      LibraryBook[]
+  VirtualClass     VirtualClass[]
+  CallLog          CallLog[]
+  WebhookLog       WebhookLog[]
+  Upload           Upload[]
+  MobileDevice     MobileDevice[]
+  MISReport        MISReport[]
+  QAEvaluations    QAEvaluation[]
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isCurrent Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant  Tenant    @relation(fields: [tenantId], references: [id])
+  Student Student[]
+  Exam    Exam[]
+  Fee     Fee[]
+  QAEvaluations QAEvaluation[]
+
+  @@index([tenantId])
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @db.Uuid
+  email     String     @unique
+  password  String
+  role      Role
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  employee     Employee?
+  student      Student?
+  parent       Parent?
+  Admission    Admission[]
+  Attendance   Attendance[]
+  LeaveRequest LeaveRequest[]
+  Notice       Notice[]
+  Notification Notification[]
+  QAEvaluations QAEvaluation[]
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+model Parent {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  occupation  String?
+  income      Decimal? @db.Decimal(12, 2)
+  childrenIds String[] @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ==================== ADMISSION ====================
+
+model Admission {
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @db.Uuid
+  applicationNo    String          @unique
+  studentName      String
+  dob              DateTime        @db.Date
+  gender           String
+  religion         String?
+  caste            String?
+  motherTongue     String?
+  aadharNo         String?
+  email            String?
+  phone            String?
+  alternatePhone   String?
+  fatherName       String
+  fatherOccupation String?
+  fatherIncome     Decimal?        @db.Decimal(12, 2)
+  motherName       String?
+  motherOccupation String?
+  permanentAddress String
+  presentAddress   String?
+  guardianName     String?
+  guardianPhone    String?
+  previousSchool   String?
+  previousClass    String?
+  transferCertNo   String?
+  birthCertNo      String?
+  photo            String?
+  documents        Json?
+  appliedClassId   String?         @db.Uuid
+  status           AdmissionStatus @default(PENDING)
+  approvedBy       String?         @db.Uuid
+  approvedAt       DateTime?
+  remarks          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  appliedClass Class?   @relation(fields: [appliedClassId], references: [id])
+  approver     User?    @relation(fields: [approvedBy], references: [id])
+  Student      Student?
+
+  @@index([tenantId])
+  @@index([applicationNo])
+}
+
+// ==================== STUDENT ====================
+
+model Student {
+  id                String     @id @default(uuid()) @db.Uuid
+  userId            String     @unique @db.Uuid
+  tenantId          String     @db.Uuid
+  admissionId       String?    @unique @db.Uuid
+  studentNo         String     @unique
+  rollNo            String
+  classId           String     @db.Uuid
+  sectionId         String     @db.Uuid
+  academicYearId    String?    @db.Uuid
+  house             String?
+  bloodGroup        String?
+  height            Decimal?   @db.Decimal(5, 2)
+  weight            Decimal?   @db.Decimal(5, 2)
+  medicalConditions String?
+  allergies         String?
+  emergencyContact  String?
+  emergencyPhone    String?
+  status            UserStatus @default(ACTIVE)
+  promotedAt        DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id])
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
+  admission     Admission?           @relation(fields: [admissionId], references: [id])
+  class         Class                @relation(fields: [classId], references: [id])
+  section       Section              @relation(fields: [sectionId], references: [id])
+  academicYear  AcademicYear?        @relation(fields: [academicYearId], references: [id])
+  attendances   Attendance[]
+  payments      Payment[]
+  examResults   Result[]
+  healthRecords HealthRecord[]
+  certificates  Certificate[]
+  scholarships  StudentScholarship[]
+  examAttempts  ExamAttempt[]
+  leaves        LeaveRequest[]
+  FeeDiscount   FeeDiscount[]
+  LibraryIssue  LibraryIssue[]
+
+  @@index([tenantId])
+  @@index([studentNo])
+}
+
+// ==================== CLASS & SECTION ====================
+
+model Class {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String
+  level     Int?
+  stream    String?
+  capacity  Int?
+  roomNo    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  sections     Section[]
+  students     Student[]
+  subjects     ClassSubject[]
+  timetables   Timetable[]
+  admissions   Admission[]
+  fees         Fee[]
+  Attendance   Attendance[]
+  ExamSchedule ExamSchedule[]
+  VirtualClass VirtualClass[]
+
+  @@index([tenantId])
+}
+
+model Section {
+  id        String   @id @default(uuid()) @db.Uuid
+  classId   String   @db.Uuid
+  name      String
+  capacity  Int?
+  roomNo    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  class    Class     @relation(fields: [classId], references: [id])
+  students Student[]
+
+  @@index([classId])
+}
+
+model Subject {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String
+  code      String
+  type      String   @default("THEORY") // THEORY, PRACTICAL
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  classSubjects ClassSubject[]
+  examQuestions Question[]
+  results       Result[]
+  ExamSchedule  ExamSchedule[]
+  Timetable     Timetable[]
+
+  @@index([tenantId])
+}
+
+model ClassSubject {
+  id        String  @id @default(uuid()) @db.Uuid
+  classId   String  @db.Uuid
+  subjectId String  @db.Uuid
+  teacherId String? @db.Uuid
+  isActive  Boolean @default(true)
+
+  class   Class     @relation(fields: [classId], references: [id])
+  subject Subject   @relation(fields: [subjectId], references: [id])
+  teacher Employee? @relation(fields: [teacherId], references: [id])
+
+  @@unique([classId, subjectId])
+}
+
+// ==================== ATTENDANCE ====================
+
+model Attendance {
+  id         String           @id @default(uuid()) @db.Uuid
+  studentId  String           @db.Uuid
+  classId    String           @db.Uuid
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  remarks    String?
+  markedById String?          @db.Uuid
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  student  Student @relation(fields: [studentId], references: [id])
+  class    Class   @relation(fields: [classId], references: [id])
+  markedBy User?   @relation(fields: [markedById], references: [id])
+
+  @@unique([studentId, date])
+  @@index([classId, date])
+  @@index([date])
+}
+
+model StaffAttendance {
+  id         String           @id @default(uuid()) @db.Uuid
+  employeeId String           @db.Uuid
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  inTime     DateTime?
+  outTime    DateTime?
+  remarks    String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+}
+
+// ==================== EXAM & RESULTS ====================
+
+model Exam {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  academicYearId String?  @db.Uuid
+  name           String
+  type           ExamType
+  startDate      DateTime @db.Date
+  endDate        DateTime @db.Date
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear?  @relation(fields: [academicYearId], references: [id])
+  results      Result[]
+  schedules    ExamSchedule[]
+  attempts     ExamAttempt[]
+
+  @@index([tenantId])
+}
+
+model ExamSchedule {
+  id        String   @id @default(uuid()) @db.Uuid
+  examId    String   @db.Uuid
+  classId   String   @db.Uuid
+  subjectId String   @db.Uuid
+  date      DateTime @db.Date
+  startTime DateTime @db.Time
+  endTime   DateTime @db.Time
+  roomNo    String?
+  marks     Int      @default(100)
+  createdAt DateTime @default(now())
+
+  exam    Exam    @relation(fields: [examId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([examId, classId, subjectId])
+}
+
+model Question {
+  id            String       @id @default(uuid()) @db.Uuid
+  subjectId     String       @db.Uuid
+  questionText  String       @db.Text
+  questionType  QuestionType
+  options       Json? // For MCQ: [{"text": "A", "isCorrect": true}, ...]
+  correctAnswer String?
+  marks         Int          @default(1)
+  difficulty    String       @default("MEDIUM") // EASY, MEDIUM, HARD
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  subject  Subject               @relation(fields: [subjectId], references: [id])
+  attempts ExamAttemptQuestion[]
+
+  @@index([subjectId])
+}
+
+model Result {
+  id            String   @id @default(uuid()) @db.Uuid
+  examId        String   @db.Uuid
+  studentId     String   @db.Uuid
+  subjectId     String   @db.Uuid
+  marksObtained Decimal  @db.Decimal(5, 2)
+  grade         String?
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([examId, studentId, subjectId])
+  @@index([examId, studentId])
+}
+
+model ExamAttempt {
+  id          String    @id @default(uuid()) @db.Uuid
+  examId      String    @db.Uuid
+  studentId   String    @db.Uuid
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Decimal?  @db.Decimal(5, 2)
+  isPassed    Boolean?
+  answers     Json?
+  createdAt   DateTime  @default(now())
+
+  exam      Exam                  @relation(fields: [examId], references: [id])
+  student   Student               @relation(fields: [studentId], references: [id])
+  questions ExamAttemptQuestion[]
+
+  @@index([examId, studentId])
+}
+
+model ExamAttemptQuestion {
+  id            String   @id @default(uuid()) @db.Uuid
+  attemptId     String   @db.Uuid
+  questionId    String   @db.Uuid
+  answer        String?
+  isCorrect     Boolean?
+  marksObtained Int?
+
+  attempt  ExamAttempt @relation(fields: [attemptId], references: [id])
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+// ==================== HR & EMPLOYEE ====================
+
+model Employee {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @unique @db.Uuid
+  tenantId      String       @db.Uuid
+  employeeNo    String       @unique
+  employeeType  EmployeeType
+  department    String
+  designation   String
+  qualification String?
+  experience    Int? // In years
+  joiningDate   DateTime     @db.Date
+  relievingDate DateTime?
+  salary        Decimal?     @db.Decimal(12, 2)
+  bankName      String?
+  accountNo     String?
+  ifscCode      String?
+  aadharNo      String?
+  panNo         String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id])
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  classSubjects   ClassSubject[]
+  leaveRequests   LeaveRequest[]
+  leaves          LeaveBalance[]
+  payrolls        Payroll[]
+  StaffAttendance StaffAttendance[]
+  Timetable       Timetable[]
+  LibraryIssue    LibraryIssue[]
+
+  @@index([tenantId])
+  @@index([employeeNo])
+}
+
+model LeaveBalance {
+  id          String    @id @default(uuid()) @db.Uuid
+  employeeId  String    @db.Uuid
+  leaveType   LeaveType
+  year        Int
+  totalDays   Int       @default(0)
+  usedDays    Int       @default(0)
+  balanceDays Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, leaveType, year])
+}
+
+model LeaveRequest {
+  id         String      @id @default(uuid()) @db.Uuid
+  employeeId String      @db.Uuid
+  studentId  String?     @db.Uuid // For student leave
+  leaveType  LeaveType
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  days       Int
+  reason     String      @db.Text
+  status     LeaveStatus @default(PENDING)
+  approvedBy String?     @db.Uuid
+  approvedAt DateTime?
+  remarks    String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  employee Employee? @relation(fields: [employeeId], references: [id])
+  student  Student?  @relation(fields: [studentId], references: [id])
+  approver User?     @relation(fields: [approvedBy], references: [id])
+  Tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+  tenantId String?   @db.Uuid
+
+  @@index([employeeId, status])
+  @@index([studentId, status])
+}
+
+// ==================== PAYROLL ====================
+
+model Payroll {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  employeeId    String    @db.Uuid
+  month         Int
+  year          Int
+  basicSalary   Decimal   @db.Decimal(12, 2)
+  allowances    Json? // {"houseRent": 5000, "transport": 2000}
+  deductions    Json? // {"tax": 1000, "insurance": 500}
+  grossSalary   Decimal   @db.Decimal(12, 2)
+  netSalary     Decimal   @db.Decimal(12, 2)
+  paymentDate   DateTime?
+  paymentStatus String    @default("PENDING") // PENDING, PAID
+  bankRefNo     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@index([tenantId, month, year])
+}
+
+// ==================== PAYMENTS & FEES ====================
+
+model Fee {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  classId        String   @db.Uuid
+  academicYearId String?  @db.Uuid
+  name           String
+  type           String // TUITION, TRANSPORT, LIBRARY, EXAM, ANNUAL, OTHER
+  amount         Decimal  @db.Decimal(10, 2)
+  dueDate        DateTime @db.Date
+  isRecurring    Boolean  @default(true)
+  installmentNo  Int?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  class        Class         @relation(fields: [classId], references: [id])
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
+  payments     Payment[]
+  discounts    FeeDiscount[]
+
+  @@index([tenantId, classId])
+}
+
+model FeeDiscount {
+  id            String   @id @default(uuid()) @db.Uuid
+  feeId         String   @db.Uuid
+  scholarshipId String?  @db.Uuid
+  studentId     String?  @db.Uuid
+  discountType  String // PERCENTAGE, FIXED
+  discountValue Decimal  @db.Decimal(10, 2)
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  fee         Fee          @relation(fields: [feeId], references: [id])
+  scholarship Scholarship? @relation(fields: [scholarshipId], references: [id])
+  student     Student?     @relation(fields: [studentId], references: [id])
+
+  @@unique([feeId, studentId])
+  @@unique([feeId, scholarshipId])
+}
+
+model Payment {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @db.Uuid
+  studentId     String          @db.Uuid
+  feeId         String          @db.Uuid
+  amount        Decimal         @db.Decimal(10, 2)
+  paidAmount    Decimal         @default(0) @db.Decimal(10, 2)
+  dueDate       DateTime        @db.Date
+  paidDate      DateTime?
+  status        PaymentStatus   @default(PENDING)
+  gateway       PaymentGateway?
+  transactionId String?
+  paymentMethod String?
+  receiptNo     String?
+  remarks       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  fee     Fee     @relation(fields: [feeId], references: [id])
+
+  @@index([tenantId, studentId])
+  @@index([tenantId, status])
+}
+
+model Scholarship {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  name         String
+  description  String?
+  type         String // MERIT, NEED_BASED, SPORTS, CULTURAL
+  amount       Decimal  @db.Decimal(10, 2)
+  discountType String // PERCENTAGE, FIXED
+  criteria     Json? // {"minGPA": 8.5, "incomeLimit": 500000}
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id])
+  students    StudentScholarship[]
+  FeeDiscount FeeDiscount[]
+
+  @@index([tenantId])
+}
+
+model StudentScholarship {
+  id            String            @id @default(uuid()) @db.Uuid
+  studentId     String            @db.Uuid
+  scholarshipId String            @db.Uuid
+  status        ScholarshipStatus @default(ACTIVE)
+  approvedBy    String?           @db.Uuid
+  approvedAt    DateTime?
+  startDate     DateTime          @db.Date
+  endDate       DateTime          @db.Date
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  student     Student     @relation(fields: [studentId], references: [id])
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id])
+
+  @@unique([studentId, scholarshipId])
+}
+
+// ==================== TIMETABLE ====================
+
+model Timetable {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  classId   String   @db.Uuid
+  dayOfWeek Int // 0-6 (Sunday-Saturday)
+  period    Int
+  subjectId String   @db.Uuid
+  teacherId String?  @db.Uuid
+  roomNo    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant    @relation(fields: [tenantId], references: [id])
+  class   Class     @relation(fields: [classId], references: [id])
+  subject Subject   @relation(fields: [subjectId], references: [id])
+  teacher Employee? @relation(fields: [teacherId], references: [id])
+
+  @@unique([tenantId, classId, dayOfWeek, period])
+}
+
+// ==================== CERTIFICATES ====================
+
+model Certificate {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @db.Uuid
+  studentId     String          @db.Uuid
+  type          CertificateType
+  certificateNo String          @unique
+  issueDate     DateTime        @db.Date
+  content       Json? // Template content with placeholders
+  qrCode        String?
+  isVerified    Boolean         @default(false)
+  verifiedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+// ==================== HEALTH ====================
+
+model HealthRecord {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  studentId     String    @db.Uuid
+  recordType    String // GENERAL, VACCINATION, INCIDENT
+  description   String    @db.Text
+  treatment     String?   @db.Text
+  doctorName    String?
+  hospitalName  String?
+  visitDate     DateTime  @db.Date
+  nextVisitDate DateTime?
+  attachments   Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId, studentId])
+}
+
+// ==================== EVENTS & ACTIVITIES ====================
+
+model Event {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  title       String
+  description String?   @db.Text
+  type        EventType
+  startDate   DateTime  @db.Date
+  endDate     DateTime  @db.Date
+  venue       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id])
+  EventParticipant EventParticipant[]
+
+  @@index([tenantId, startDate])
+}
+
+model EventParticipant {
+  id         String   @id @default(uuid()) @db.Uuid
+  eventId    String   @db.Uuid
+  studentId  String?  @db.Uuid
+  employeeId String?  @db.Uuid
+  status     String   @default("REGISTERED")
+  createdAt  DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, studentId])
+  @@unique([eventId, employeeId])
+}
+
+// ==================== FRONT OFFICE ====================
+
+model FrontOfficeLog {
+  id           String         @id @default(uuid()) @db.Uuid
+  tenantId     String         @db.Uuid
+  visitorName  String
+  phone        String?
+  address      String?
+  purpose      VisitorPurpose
+  personToMeet String?
+  department   String?
+  inTime       DateTime       @default(now())
+  outTime      DateTime?
+  remarks      String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, inTime])
+}
+
+model Enquiry {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  name         String
+  phone        String
+  email        String?
+  class        String?
+  source       String?
+  status       String    @default("NEW") // NEW, FOLLOW_UP, CONVERTED, LOST
+  remarks      String?
+  nextFollowUp DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+}
+
+model Complaint {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  studentId   String?   @db.Uuid
+  employeeId  String?   @db.Uuid
+  category    String
+  subject     String
+  description String    @db.Text
+  status      String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  resolvedBy  String?   @db.Uuid
+  resolvedAt  DateTime?
+  remarks     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+}
+
+// ==================== NOTICES ====================
+
+model Notice {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  title       String
+  content     String    @db.Text
+  type        String // GENERAL, ACADEMIC, ADMIN, EVENT, URGENT
+  audience    String[] // ALL, STUDENTS, TEACHERS, PARENTS, STAFF
+  publishDate DateTime  @db.Date
+  expiryDate  DateTime?
+  isActive    Boolean   @default(true)
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  createdBy User?  @relation(fields: [createdById], references: [id])
+
+  @@index([tenantId, publishDate])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, userId])
+}
+
+// ==================== SMS & WHATSAPP ====================
+
+model SmsLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  recipientPhone  String
+  message         String    @db.Text
+  status          String    @default("PENDING") // PENDING, SENT, FAILED
+  gatewayResponse String?
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+}
+
+model WhatsappLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  recipientPhone  String
+  message         String    @db.Text
+  status          String    @default("PENDING")
+  gatewayResponse String?
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+}
+
+// ==================== BIOMETRIC ====================
+
+model BiometricDevice {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String
+  ipAddress String
+  port      Int      @default(4370)
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  logs   BiometricLog[]
+
+  @@index([tenantId])
+}
+
+model BiometricLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  deviceId  String   @db.Uuid
+  userCode  String
+  timestamp DateTime
+  type      String   @default("IN") // IN, OUT
+  createdAt DateTime @default(now())
+
+  device BiometricDevice @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId, timestamp])
+}
+
+// ==================== VEHICLE TRACKING ====================
+
+model Vehicle {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  vehicleNo   String
+  type        String // BUS, VAN, CAR
+  capacity    Int
+  driverName  String?
+  driverPhone String?
+  route       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
+  locations VehicleLocation[]
+
+  @@index([tenantId])
+}
+
+model VehicleLocation {
+  id        String   @id @default(uuid()) @db.Uuid
+  vehicleId String   @db.Uuid
+  latitude  Decimal  @db.Decimal(10, 8)
+  longitude Decimal  @db.Decimal(11, 8)
+  speed     Decimal? @db.Decimal(5, 2)
+  timestamp DateTime @default(now())
+
+  vehicle  Vehicle @relation(fields: [vehicleId], references: [id])
+  Tenant   Tenant? @relation(fields: [tenantId], references: [id])
+  tenantId String? @db.Uuid
+
+  @@index([vehicleId, timestamp])
+}
+
+// ==================== BARCODE & LIBRARY ====================
+
+model LibraryBook {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  barcode   String   @unique
+  isbn      String?
+  title     String
+  author    String?
+  publisher String?
+  category  String?
+  rackNo    String?
+  quantity  Int      @default(1)
+  available Int      @default(1)
+  price     Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  issues LibraryIssue[]
+
+  @@index([tenantId])
+}
+
+model LibraryIssue {
+  id         String    @id @default(uuid()) @db.Uuid
+  bookId     String    @db.Uuid
+  studentId  String?   @db.Uuid
+  employeeId String?   @db.Uuid
+  issueDate  DateTime  @default(now())
+  dueDate    DateTime  @db.Date
+  returnDate DateTime?
+  status     String    @default("ISSUED") // ISSUED, RETURNED, LOST
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  book     LibraryBook @relation(fields: [bookId], references: [id])
+  student  Student?    @relation(fields: [studentId], references: [id])
+  employee Employee?   @relation(fields: [employeeId], references: [id])
+
+  @@index([bookId, status])
+  @@index([studentId, status])
+}
+
+// ==================== VIRTUAL CLASSROOM ====================
+
+model VirtualClass {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  title        String
+  description  String?
+  classId      String?  @db.Uuid
+  hostId       String   @db.Uuid
+  platform     String // ZOOM, GOOGLE_MEET, CUSTOM
+  meetingUrl   String?
+  meetingId    String?
+  password     String?
+  startTime    DateTime
+  duration     Int      @default(60) // minutes
+  status       String   @default("SCHEDULED") // SCHEDULED, LIVE, ENDED, CANCELLED
+  recordingUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  class  Class? @relation(fields: [classId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([startTime])
+}
+
+// ==================== TELEPHONE CALL LOGS ====================
+
+model CallLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  caller    String
+  receiver  String
+  duration  Int      @default(0) // seconds
+  type      String // INCOMING, OUTGOING
+  purpose   String?
+  remarks   String?
+  callDate  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, callDate])
+}
+
+// ==================== WEBHOOKS ====================
+
+model WebhookLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  provider    String // STRIPE, PAYHERE, SMS_PROVIDER
+  eventType   String
+  payload     Json
+  response    Json?
+  status      String    @default("PENDING") // PENDING, SUCCESS, FAILED
+  retryCount  Int       @default(0)
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([provider, eventType])
+}
+
+// ==================== UPLOADS ====================
+
+model Upload {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  fileName   String
+  filePath   String
+  fileType   String // IMAGE, PDF, VIDEO, DOCUMENT
+  fileSize   Int
+  module     String // STUDENT, EMPLOYEE, FEE, etc.
+  recordId   String?  @db.Uuid
+  uploadedBy String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, module])
+}
+
+// ==================== MOBILE DEVICES ====================
+
+model MobileDevice {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  userId      String?   @db.Uuid
+  deviceToken String
+  deviceType  String // ANDROID, IOS
+  appVersion  String?
+  lastActive  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, deviceToken])
+}
+
+// ==================== MIS REPORTS ====================
+
+model MISReport {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  name        String
+  reportType  String // STUDENT, FEE, ATTENDANCE, EXAM, PAYROLL
+  parameters  Json?
+  data        Json?
+  generatedBy String?  @db.Uuid
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, reportType])
+}
+
+// ==================== QA EVALUATION ====================
+
+enum QAScoreLevel {
+  URGENT_DEVELOPMENT // 1 - விரைவாக அபிவிருத்தி
+  NEEDS_DEVELOPMENT   // 2 - அபிவிருத்தி தேவை
+  AVERAGE             // 3 - சாதாரணம்
+  GOOD                // 4 - நன்று
+  VERY_GOOD           // 5 - மிகவும் நன்று
+  OUTSTANDING         // 6 - அதிவிசேடம்
+}
+
+enum QAStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  SUBMITTED
+}
+
+model QAEvaluation {
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @db.Uuid
+  academicYearId String?    @db.Uuid
+  evaluatorId   String?    @db.Uuid
+  status        QAStatus   @default(DRAFT)
+  totalScore    Decimal?   @db.Decimal(5, 2)
+  percentage    Decimal?   @db.Decimal(5, 2)
+  grade         String?
+  language      String     @default("ta") // ta (Tamil), en (English)
+  observations  Json?       @db.Json
+  recommendations Json?    @db.Json
+  submittedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear?       @relation(fields: [academicYearId], references: [id])
+  evaluator    User?               @relation(fields: [evaluatorId], references: [id])
+  criteria     QACriteriaResponse[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, academicYearId])
+}
+
+model QACriteriaResponse {
+  id              String       @id @default(uuid()) @db.Uuid
+  evaluationId    String       @db.Uuid
+  groupId         String       // QA Group ID (1-8)
+  groupName       String       // QA Group Name
+  criteriaId      String       // Criteria ID within group
+  criteriaName    String
+  indicatorId     String?      // Optional indicator
+  score           Int          // 1-6
+  scoreLabel      String       // Tamil/English label
+  discussion      String?      @db.Text
+  evidence        String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  evaluation QAEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, groupId, criteriaId])
+  @@index([evaluationId])
+}
